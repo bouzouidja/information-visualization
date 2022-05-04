@@ -6,6 +6,9 @@ import pandas as pd
 from dash import Dash, dcc, html, Input, Output
 import plotly.express as px
 import plotly.graph_objects as go
+from urllib.request import urlopen
+import json
+
 
 ###### PIPELINE#####
 
@@ -29,39 +32,40 @@ data['Time']= data_prepared['Time']
 data['Year'] = pd.to_datetime(data['Date']).dt.to_period('Y')
 data['Month'] = pd.to_datetime(data['Date']).dt.to_period('M')
 # Aggregate by year, month, station
-df_air = data.groupby(['Short_address','Year','Month'], as_index=False).agg({'SO2':'mean',
+df_air = data.groupby(['Short_address','Year','Month','Latitude','Longitude'], as_index=False).agg({'SO2':'mean',
  'NO2':'mean', 'O3':'mean', 'CO':'mean', 'PM10':'mean', 'PM2.5':'mean'})
 
 ##Status of polluants preparation based if measurement info file in order to add color in the Bar
-so2_status = df_air[['Short_address','Year','Month', 'SO2']]
+so2_status = df_air[['Short_address','Year','Month', 'SO2','Latitude','Longitude']]
 so2_status['SO2_status'] = pd.DataFrame({'SO2_status':so2_status['SO2'].map(lambda x: "Very bad" if float(x)>=1.0 else "Bad" if
 float(x)<1.0 and float(x)>=0.15 else "Normal" if float(x)<0.15 and x>=0.05 else "Good" )})
 
-no2_status = df_air[['Short_address','Year','Month', 'NO2']]
+no2_status = df_air[['Short_address','Year','Month', 'NO2','Latitude','Longitude']]
 no2_status['NO2_status'] = pd.DataFrame({'NO2_status':no2_status['NO2'].map(lambda x: "Very bad" if float(x)>=2.0 else "Bad" if
 float(x)<2.0 and float(x)>=0.2 else "Normal" if float(x)<0.2 and x>=0.06 else "Good" )})
 
-co_status = df_air[['Short_address','Year','Month', 'CO']]
+co_status = df_air[['Short_address','Year','Month', 'CO','Latitude','Longitude']]
 co_status['CO_status'] = pd.DataFrame({'CO_status':co_status['CO'].map(lambda x: "Very bad" if float(x)>=50 else "Bad" if
 float(x)<50.0 and float(x)>=15 else "Normal" if float(x)<15 and x>=9 else "Good" )})
 
 
-o3_status = df_air[['Short_address','Year','Month', 'O3']]
+o3_status = df_air[['Short_address','Year','Month', 'O3','Latitude','Longitude']]
 o3_status['O3_status'] = pd.DataFrame({'O3_status':o3_status['O3'].map(lambda x: "Very bad" if float(x)>=.5 else "Bad" if
 float(x)<.5 and float(x)>=.15 else "Normal" if float(x)<.15 and x>=.09 else "Good" )})
 
 
-pm10_status = df_air[['Short_address','Year','Month', 'PM10']]
+pm10_status = df_air[['Short_address','Year','Month', 'PM10','Latitude','Longitude']]
 pm10_status['PM10_status'] = pd.DataFrame({'PM10_status':pm10_status['PM10'].map(lambda x: "Very bad" if float(x)>=600.0 else "Bad" if
 float(x)<600.0 and float(x)>=150 else "Normal" if float(x)<150 and x>=80 else "Good" )})
 
-pm25_status = df_air[['Short_address','Year','Month', 'PM2.5']]
+pm25_status = df_air[['Short_address','Year','Month', 'PM2.5','Latitude','Longitude']]
 pm25_status['PM2.5_status'] = pd.DataFrame({'PM2.5_status':pm25_status['PM2.5'].map(lambda x: "Very bad" if float(x)>=500.0 else "Bad" if
 float(x)<500.0 and float(x)>=75 else "Normal" if float(x)<75 and x>=35 else "Good" )})
 
 
 Addresses = data['Short_address'].unique()
 years = data['Year'].unique()
+
 
 
 ##### Static method
@@ -106,6 +110,7 @@ app.layout = html.Div([
         html.H2(children='Map analysis', style={'text-align':'left'}),
         dcc.Dropdown(id='dropdown_stations2',options=Addresses,multi=False, value=Addresses[0]),
         html.Br(),
+        dcc.Graph(id='map_choropleth', figure={})
      ])
 
     
@@ -115,7 +120,8 @@ app.layout = html.Div([
 
 ####Callback for connecting components
 @app.callback(
-    Output(component_id='barchart1', component_property='figure'),
+    [Output(component_id='barchart1', component_property='figure'),
+     Output(component_id='map_choropleth', component_property='figure'),],
     [Input(component_id='dropdown_years', component_property='value'),
      Input(component_id='polluants_id', component_property='value')]
 )
@@ -138,7 +144,7 @@ def update_graph(year, gaz):
     else :
         df = co_status.copy()
         color = "co_status"
-   
+    print(df)
     ##filter dataframe with year value selected by user
     df = df[df["Year"]==str(year)]
     
@@ -146,7 +152,33 @@ def update_graph(year, gaz):
     ## prepare the figure according to the filtered data
     fig = px.bar(df, x='Short_address', y=gaz,
      title="Mean of pollutions grouped by address station and year", color=color)
-    return fig
+
+    # Plotly Express
+    
+    fig2 = px.choropleth(
+        locations=["CA", "TX", "NY"],
+        locationmode="USA-states",
+        color=[1,2,3],
+        scope="usa")
+
+
+    #mapbox_access_token = open("data/AirPollutionSeoul/Token.txt").read()
+    
+    px.set_mapbox_access_token(open("data/AirPollutionSeoul/Token.txt").read())
+    #dff = px.data.carshare()
+    #fig4 = px.scatter_mapbox(dff, lat="centroid_lat", lon="centroid_lon",     color="peak_hour", size="car_hours",
+    #              color_continuous_scale=px.colors.cyclical.IceFire, size_max=15, zoom=10)
+    #fig4.show()
+
+
+    fig3 = px.scatter_mapbox(df,
+     lat="Latitude",
+     lon="Longitude",
+     color=color,
+     color_continuous_scale=px.colors.cyclical.IceFire, size_max=15, zoom=10)
+    
+   
+    return fig, fig3
 
 
 if __name__ == '__main__':

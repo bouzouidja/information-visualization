@@ -10,6 +10,10 @@ from urllib.request import urlopen
 import json
 
 
+
+###### set up Plotly express token #####
+px.set_mapbox_access_token(open("data/AirPollutionSeoul/Token.txt").read())
+
 ###### PIPELINE#####
 
 ###1/ loading data###   
@@ -65,6 +69,8 @@ float(x)<500.0 and float(x)>=75 else "Normal" if float(x)<75 and x>=35 else "Goo
 
 Addresses = data['Short_address'].unique()
 years = data['Year'].unique()
+months = data['Month'].unique()
+print(months)
 
 
 
@@ -80,6 +86,9 @@ def generate_table(dataframe, max_rows=10):
             ]) for i in range(min(len(dataframe), max_rows))
         ])
     ])
+months_to_number = {'January':'01', 'February':'02','Mars':'03','April':'04','May':'05',
+         'June':'06','July':'07','August':'08','September':'09','October':'10',
+          'November':'11', 'December':'12'}
 ##################
 
 app = Dash(__name__)
@@ -89,21 +98,29 @@ app.layout = html.Div([
     html.H1(children='Air pollution analysis in Seoul', style={'text-align':'center'}),
     html.Div([
         html.H2(children='Average of concentration by station addresses', style={'text-align':'left'}),
-        html.Br(),
-        dcc.Dropdown(id='dropdown_years',options=[{"label":"2017","value":"2017"},
-         {"label":"2018","value":"2018"},
-         {"label":"2019","value":"2019"},], multi=False, value="2017"),
-          dcc.Dropdown(id='polluants_id',options= [{"label":"SO2","value":"SO2"},
+          dcc.Dropdown(id='polluants_id', options= [{"label":"SO2","value":"SO2"},
            {"label":"NO2","value":"NO2"}, {"label":"O3","value":"O3"},
             {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
-             multi=False, value="NO2"),
+             multi=False, value="NO2", style={'width':'200px'}, placeholder="Select the polluant"),
+        html.Br(),
+        dcc.Dropdown(id='dropdown_years',options=['2017','2018','2019'], multi=False,
+         value="2017", style={'width':'200px'}, placeholder="Select the year"),
+        
+        html.Br(),
+        dcc.Dropdown(id='dropdown_months',options=['January', 'February','Mars','April','May',
+         'June','July','August','September','October', 'November', 'December'],
+          multi=False, value='January', style={'width':'200px'},
+          placeholder="Select the month"),
+        
+        
         dcc.Graph(id='barchart1', figure={})
      ]),
      
     html.Div([
         html.H2(children='PieChart analysis', style={'text-align':'left'}),
-        dcc.Dropdown(id='dropdown_stations',options=Addresses,multi=False, value=Addresses[0]),
+        dcc.Dropdown(id='dropdown_stations',options=Addresses, multi=False, value=Addresses[0]),
         html.Br(),
+        dcc.Graph(id='PieChart_id', figure={})
      ]),
 
     html.Div([
@@ -117,15 +134,19 @@ app.layout = html.Div([
        
 ])
 
-
 ####Callback for connecting components
 @app.callback(
     [Output(component_id='barchart1', component_property='figure'),
+    Output(component_id='PieChart_id', component_property='figure'),
      Output(component_id='map_choropleth', component_property='figure'),],
-    [Input(component_id='dropdown_years', component_property='value'),
-     Input(component_id='polluants_id', component_property='value')]
+    [
+     Input(component_id='polluants_id', component_property='value'),
+     Input(component_id='dropdown_years', component_property='value'),
+     Input(component_id='dropdown_months', component_property='value')
+      ]
 )
-def update_graph(year, gaz):
+def update_graph(gaz, year, month):
+    res = False
     if gaz == "PM10":
         df = pm10_status.copy()
         color = "PM10_status"
@@ -144,137 +165,27 @@ def update_graph(year, gaz):
     else :
         df = co_status.copy()
         color = "co_status"
-    print(df)
+
     ##filter dataframe with year value selected by user
-    df = df[df["Year"]==str(year)]
-    
-   
-    ## prepare the figure according to the filtered data
-    fig = px.bar(df, x='Short_address', y=gaz,
-     title="Mean of pollutions grouped by address station and year", color=color)
+    #print(str(year)+"-01")
+    if year and month:
+        mth = str(year)+"-"+months_to_number[month]
+        print("this is the month in number",mth)
+        df = df[(df["Year"]==str(year)) & (df["Month"]==mth) ]
+        ## prepare the figure according to the filtered data
+        fig = px.bar(df, x='Short_address', y=gaz,
+         title="Mean of pollutions grouped by address station and year", color=color)
+        # Plotly Express
+        fig2 = px.pie(df, values=gaz, names='Short_address', title='Contribution of the polluant')
+        fig3 = px.scatter_mapbox(df,
+         lat="Latitude",
+         lon="Longitude",
+         color=color,
+         color_continuous_scale=px.colors.cyclical.IceFire, size_max=15, zoom=10)
 
-    # Plotly Express
-    
-    fig2 = px.choropleth(
-        locations=["CA", "TX", "NY"],
-        locationmode="USA-states",
-        color=[1,2,3],
-        scope="usa")
-
-
-    #mapbox_access_token = open("data/AirPollutionSeoul/Token.txt").read()
-    
-    px.set_mapbox_access_token(open("data/AirPollutionSeoul/Token.txt").read())
-    #dff = px.data.carshare()
-    #fig4 = px.scatter_mapbox(dff, lat="centroid_lat", lon="centroid_lon",     color="peak_hour", size="car_hours",
-    #              color_continuous_scale=px.colors.cyclical.IceFire, size_max=15, zoom=10)
-    #fig4.show()
-
-
-    fig3 = px.scatter_mapbox(df,
-     lat="Latitude",
-     lon="Longitude",
-     color=color,
-     color_continuous_scale=px.colors.cyclical.IceFire, size_max=15, zoom=10)
-    
-   
-    return fig, fig3
+        res = fig, fig2, fig3
+    return res
 
 
 if __name__ == '__main__':
     app.run_server(debug=True)
-
-
-"""from dash import Dash, html, dcc
-import plotly.express as px
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib import dates as mpl_dates
-import numpy as np
-import os
-
-os.getcwd()
-
-app = Dash(__name__)
-
-# assume you have a "long-form" data frame
-# see https://plotly.com/python/px-arguments/ for more options
-
-###### PIPELINE#####
-
-###1/ loading data###   
-data = pd.read_csv('data/AirPollutionSeoul/Measurement_summary.csv')
-#data.to_csv("data/AirPollutionSeoul/Measurement_summary_save.csv", index=False)
-
-
-#### 2/ Data preparation and exploration####
-# separate date and time from measurement date features
-data_prepared = data['Measurement date'].str.split(" ")
-dates = data_prepared.map(lambda x: x[0])
-times = data_prepared.map(lambda x: x[1])
-#print(dtt, type(dtt))
-#print(times[0:10])
-stations = data[['Station code']].drop_duplicates() ### usefull if you show the addresses by extracting it from address!*
-data_prepared= pd.DataFrame({'Date':dates, 'Time':times},  columns=['Date', 'Time'])
-data['Date']= data_prepared['Date']
-data['Time']= data_prepared['Time']
-# Create a column containing the month
-data['Year'] = pd.to_datetime(data['Date']).dt.to_period('Y')
-data['Month'] = pd.to_datetime(data['Date']).dt.to_period('M')
-
-print(data.head(10))
-
-
-def generate_table(dataframe, max_rows=10):
-    return html.Table([
-        html.Thead(
-            html.Tr([html.Th(col) for col in dataframe.columns])
-        ),
-        html.Tbody([
-            html.Tr([
-                html.Td(dataframe.iloc[i][col]) for col in dataframe.columns
-            ]) for i in range(min(len(dataframe), max_rows))
-        ])
-    ])
-
-
-df = pd.DataFrame({
-    "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
-    "Amount": [4, 1, 2, 2, 4, 5],
-    "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
-})
-
-fig = px.bar(df, x="Fruit", y="Amount", color="City", barmode="group")
-#fig = px.bar(data.head(10), x="Year", y="SO2", color="Station code", barmode="group")
-
-app.layout = html.Div(children=[
-    html.H1(children='Air Polution In Seoul City'),
-
-    html.Div(children='''
-        Gaz poluants analysis.
-    '''),
-
-    dcc.Graph(
-        id='example-graph',
-        figure=fig
-    )
-])
-
-app.layout = html.Div([
-    html.H4(children='Dataset'),
-    generate_table(data)
-])
-
-if __name__ == '__main__':
-    app.run_server(debug=True)
-
-
-
-
-
-
-
-dcc.Dropdown(id='dropdown_years',options=[{"label":"2017","value":"2017"}, {"label":"2018","value":"2018"},
-     {"label":"2019","value":"2019"},], multi=False, value="2017"),
-
-"""

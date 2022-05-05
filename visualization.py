@@ -33,8 +33,11 @@ data_prepared= pd.DataFrame({'Date':dates, 'Time':times},  columns=['Date', 'Tim
 data['Date']= data_prepared['Date']
 data['Time']= data_prepared['Time']
 # Create a column containing the month and year
-data['Year'] = pd.to_datetime(data['Date']).dt.to_period('Y')
-data['Month'] = pd.to_datetime(data['Date']).dt.to_period('M')
+#data['Year'] = pd.to_datetime(data['Date']).dt.to_period('Y')
+data['Year'] = data['Date'].str.split("-").map(lambda x: x[0])
+#print("this is the years2", data['Year'])
+
+data['Month'] = data['Date'].str.split("-").map(lambda x: x[1])
 # Aggregate by year, month, station
 df_air = data.groupby(['Short_address','Year','Month','Latitude','Longitude'], as_index=False).agg({'SO2':'mean',
  'NO2':'mean', 'O3':'mean', 'CO':'mean', 'PM10':'mean', 'PM2.5':'mean'})
@@ -70,7 +73,7 @@ float(x)<500.0 and float(x)>=75 else "Normal" if float(x)<75 and x>=35 else "Goo
 Addresses = data['Short_address'].unique()
 years = data['Year'].unique()
 months = data['Month'].unique()
-print(months)
+
 
 
 
@@ -116,16 +119,23 @@ app.layout = html.Div([
         dcc.Graph(id='barchart1', figure={})
      ]),
      
+
+    html.Div([
+        html.H2(children='concentration over time', style={'text-align':'left'}),
+        #dcc.Dropdown(id='dropdown_stations',options=Addresses, multi=False, value=Addresses[0]),
+        html.Br(),
+        dcc.Graph(id='LineChart_id', figure={})
+     ]),
     html.Div([
         html.H2(children='PieChart analysis', style={'text-align':'left'}),
-        dcc.Dropdown(id='dropdown_stations',options=Addresses, multi=False, value=Addresses[0]),
+        #dcc.Dropdown(id='dropdown_stations',options=Addresses, multi=False, value=Addresses[0]),
         html.Br(),
         dcc.Graph(id='PieChart_id', figure={})
      ]),
 
     html.Div([
         html.H2(children='Map analysis', style={'text-align':'left'}),
-        dcc.Dropdown(id='dropdown_stations2',options=Addresses,multi=False, value=Addresses[0]),
+        #dcc.Dropdown(id='dropdown_stations2',options=Addresses,multi=False, value=Addresses[0]),
         html.Br(),
         dcc.Graph(id='map_choropleth', figure={})
      ])
@@ -133,6 +143,12 @@ app.layout = html.Div([
     
        
 ])
+
+#fig = px.line(df[mask],  x="year", y="lifeExp", color='country')
+#fig = px.line(df, x="year", y="lifeExp", title='Life expectancy in Canada')
+#Output(component_id='LineChart_id', component_property='figure'),
+
+
 
 ####Callback for connecting components
 @app.callback(
@@ -170,8 +186,9 @@ def update_graph(gaz, year, month):
     #print(str(year)+"-01")
     if year and month:
         mth = str(year)+"-"+months_to_number[month]
-        print("this is the month in number",mth)
-        df = df[(df["Year"]==str(year)) & (df["Month"]==mth) ]
+        dff =df.copy()
+        print(mth,df["Month"])
+        df = df[(df["Year"]==str(year)) & (df["Month"]==months_to_number[month]) ]
         ## prepare the figure according to the filtered data
         fig = px.bar(df, x='Short_address', y=gaz,
          title="Mean of pollutions grouped by address station and year", color=color)
@@ -185,6 +202,47 @@ def update_graph(gaz, year, month):
 
         res = fig, fig2, fig3
     return res
+
+
+@app.callback(
+     
+     Output("LineChart_id", "figure"), 
+    Input("polluants_id", "value")
+      )
+def update_line_chart(gaz):
+    
+    if gaz == "PM10":
+        df = pm10_status.copy()
+        color = "PM10_status"
+    elif gaz=="PM2.5":
+        df = pm25_status.copy()
+        color = "PM2.5_status"
+    elif gaz=="NO2":
+        df = no2_status.copy()
+        color = "NO2_status"
+    elif gaz=="SO2":
+        df = so2_status.copy()
+        color = "SO2_status"
+    elif gaz=="O3":
+        df = o3_status.copy()
+        color = "O3_status"
+    else :
+        df = co_status.copy()
+        color = "co_status"
+    
+    #print("dffd", df['Year'], df[gaz])
+
+    fig = px.line(df,x='Year', y=gaz,color='Short_address',
+     title="Concentration of the polluant over time ", markers=True)
+    #print(df['Year'],df[gaz])
+    #df = px.data.gapminder().query("continent == 'Oceania'")
+    #print(df['year'],df['lifeExp'])
+    #fig2 = px.line(df, x='year', y='lifeExp', color='country', markers=True)
+    
+    #fig = px.line(df2, x="x", y="y", title="Unsorted Input") 
+    
+
+    return fig
 
 
 if __name__ == '__main__':

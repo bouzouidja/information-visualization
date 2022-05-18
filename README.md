@@ -21,3 +21,7 @@ Project :
 - remove the number in the station address
 - show the peak of the concentration by day, by heure de point 16,17 ou midi
 - In the presentation show the threshold provided in measurment info
+- Set a threshold for each linechart of polluant in order to see when the plot cross the average threshold,
+
+- Allow user to adjust the threshold maybe it a plus!
+- Choose the effective polluant and put it as color in all graphs 

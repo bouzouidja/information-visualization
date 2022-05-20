@@ -9,7 +9,8 @@ import plotly.graph_objects as go
 import numpy as np
 from urllib.request import urlopen
 import json
-
+import preprocessing as prp
+import global_overview as glo
 
 
 ###### set up Plotly express token #####
@@ -17,202 +18,37 @@ px.set_mapbox_access_token(open("data/AirPollutionSeoul/Token.txt").read())
 
 ###### PIPELINE#####
 
-###1/ loading data###   
-data = pd.read_csv('data/AirPollutionSeoul/Measurement_summary.csv')
+###1/ loading data### 
 
-#### 2/ Data preparation and exploration####
-# separate date and time from measurement date features
-data_prepared = data['Measurement date'].str.split(" ")
+#data = pd.read_csv('data/AirPollutionSeoul/Measurement_summary.csv')
+data=prp.read_dataset('data/AirPollutionSeoul/Measurement_summary.csv')
 
-adrs = data['Address'].str.split(",")
+#### Preprocessing steps
+data = prp.datetime_preprocessing(data)
+ 
 
-adrs = adrs.map(lambda x: ','.join(x[2:3]))
-adrs = pd.DataFrame({'Short_address':adrs}, columns=["Short_address"])
-data['Short_address']=adrs['Short_address']
-dates = data_prepared.map(lambda x: x[0])
-times = data_prepared.map(lambda x: x[1])
-data_prepared= pd.DataFrame({'Date':dates, 'Time':times},  columns=['Date', 'Time'])
-data['Date']= data_prepared['Date']
-data['Time']= data_prepared['Time']
-
-# Create a column containing the month and year
-#data['Year'] = pd.to_datetime(data['Date']).dt.to_period('Y')
-data['Year'] = data['Date'].str.split("-").map(lambda x: x[0])
-#print("this is the years2", data['Year'])
-
-data['Month'] = data['Date'].str.split("-").map(lambda x: x[1])
-#dddd = pd.DatetimeIndex(data['Measurement date']).month
+### Aggregation of polluants by stations, year, month, longitude, lattitude
+df_air = prp.aggregation(data)
 
 
-year_month=data_prepared['Date'].str.split('-').map(lambda x:'-'.join(x[0:2]))
-data['Year_month']=year_month
-# Aggregate by year, month, station
-df_air = data.groupby(['Short_address','Year_month','Year','Month','Latitude','Longitude'], as_index=False).agg({'SO2':'mean',
- 'NO2':'mean', 'O3':'mean', 'CO':'mean', 'PM10':'mean', 'PM2.5':'mean'})
-
-### summary dataframe 
-"""df_summary = pd.DataFrame({'':['Max','Min'],'SO2':[data['SO2'].max(),data['SO2'].min()],
- 'NO2':[data['NO2'].max(),data['NO2'].min()],'O3':[data['O3'].max(),data['CO'].min()],
-  'PM10':[data['PM10'].max(),data['PM10'].min()], 'PM2.5':[data['PM2.5'].max(),data['PM2.5'].min()] })
-"""
-
-##Status of polluants preparation based if measurement info file in order to add color in the Bar
-"""
-so2_status = df_air[['Short_address','Year','Month', 'SO2','Latitude','Longitude']]
-so2_status['SO2_status'] = pd.DataFrame({'SO2_status':so2_status['SO2'].map(lambda x: "Very bad" if float(x)>=1.0 else "Bad" if
-float(x)<1.0 and float(x)>=0.15 else "Normal" if float(x)<0.15 and x>=0.05 else "Good" )})
-
-no2_status = df_air[['Short_address','Year','Month', 'NO2','Latitude','Longitude']]
-no2_status['NO2_status'] = pd.DataFrame({'NO2_status':no2_status['NO2'].map(lambda x: "Very bad" if float(x)>=2.0 else "Bad" if
-float(x)<2.0 and float(x)>=0.2 else "Normal" if float(x)<0.2 and x>=0.06 else "Good" )})
-
-co_status = df_air[['Short_address','Year','Month', 'CO','Latitude','Longitude']]
-co_status['CO_status'] = pd.DataFrame({'CO_status':co_status['CO'].map(lambda x: "Very bad" if float(x)>=50 else "Bad" if
-float(x)<50.0 and float(x)>=15 else "Normal" if float(x)<15 and x>=9 else "Good" )})
-
-
-o3_status = df_air[['Short_address','Year','Month', 'O3','Latitude','Longitude']]
-o3_status['O3_status'] = pd.DataFrame({'O3_status':o3_status['O3'].map(lambda x: "Very bad" if float(x)>=.5 else "Bad" if
-float(x)<.5 and float(x)>=.15 else "Normal" if float(x)<.15 and x>=.09 else "Good" )})
-
-
-pm10_status = df_air[['Short_address','Year','Month', 'PM10','Latitude','Longitude']]
-pm10_status['PM10_status'] = pd.DataFrame({'PM10_status':pm10_status['PM10'].map(lambda x: "Very bad" if float(x)>=600.0 else "Bad" if
-float(x)<600.0 and float(x)>=150 else "Normal" if float(x)<150 and x>=80 else "Good" )})
-
-pm25_status = df_air[['Short_address','Year','Month', 'PM2.5','Latitude','Longitude']]
-pm25_status['PM2.5_status'] = pd.DataFrame({'PM2.5_status':pm25_status['PM2.5'].map(lambda x: "Very bad" if float(x)>=500.0 else "Bad" if
-float(x)<500.0 and float(x)>=75 else "Normal" if float(x)<75 and x>=35 else "Good" )})
-"""
-
-Addresses = data['Short_address'].unique()
-years = data['Year'].unique()
-months = data['Month'].unique()
-
-
-
-
-df_air = df_air[(df_air["NO2"]>=0)]
-#df_air['SO2']=(df_air['SO2']-df_air['SO2'].min())/(df_air['SO2'].max()-df_air['SO2'].min())
-#df_air = np.log(df_air['SO2'])
-
-
-
-##### Static method
-def generate_table(dataframe, max_rows=10):
-    return html.Table([
-        html.Thead(
-            html.Tr([html.Th(col) for col in dataframe.columns])
-        ),
-        html.Tbody([
-            html.Tr([
-                html.Td(dataframe.iloc[i][col]) for col in dataframe.columns
-            ]) for i in range(min(len(dataframe), max_rows))
-        ])
-    ])
-months_to_number = {'January':'01', 'February':'02','Mars':'03','April':'04','May':'05',
-         'June':'06','July':'07','August':'08','September':'09','October':'10',
-          'November':'11', 'December':'12'}
-polluant_threshold={'SO2':.15,'NO2':.2,'CO':15.0,'O3':.15,'PM10':150.0,'PM2.5':75.0}
-
-
-
-def generate_days(year, month):
-    dates= data[(data['Year']==str(year)) & (data['Month']==months_to_number[month])]
-    dates=dates['Date'].unique()
-    return dates
-
-
-##################
-
-#### Overview dataframe##############
-def polluant_overview_barchart():
-    """fig = px.bar(df_air, x='Short_address', y=['NO2','SO2','O3',],
-                     title="Mean of pollutions grouped by address station and year")
-                fig.show()
-    """
-    fig = px.bar(df_air, x='Short_address', y='NO2',
-     title="Mean of pollutions grouped by address station", labels={"Short_address":"Station name"})
-
-def polluant_overview_line():
-    # Create traces
-    #print(df_air.head(700))
-   
-    df_sorted = data.copy().groupby(['Year_month','Year','Month'], as_index=False).agg({'SO2':'mean',
-     'NO2':'mean', 'O3':'mean', 'CO':'mean', 'PM10':'mean', 'PM2.5':'mean'}).sort_values(by="Year_month")
-    #df_sorted.to_csv('df_sorted.csv')
-    fig= go.Figure()
-    fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['NO2'].iloc[::2],
-                    mode='lines+markers',
-                    name='Polluant NO2')),
-    fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['SO2'].iloc[::2],
-                    mode='lines+markers',
-                    name='Polluant SO2'))
-    fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['CO'].iloc[::2],
-                    mode='lines+markers',
-                    name='Polluant CO'))
-    fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['O3'].iloc[::2],
-                    mode='lines+markers',
-                    name='Polluant O3'))
-
-
-    return fig
-
-def particulate_matter_overview_line():
-    df_sorted = data.copy().groupby(['Year_month','Year','Month'], as_index=False).agg({'PM10':'mean',
-     'PM2.5':'mean'}).sort_values(by="Year_month")
-    #df_sorted.to_csv('df_sorted.csv')
-    fig= go.Figure()
-    fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['PM10'].iloc[::2],
-                    mode='lines+markers',
-                    name='Polluant PM10'))
-    fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['PM2.5'].iloc[::2],
-                    mode='lines+markers',
-                    name='Polluant PM2.5'))
-
-    
-
-    return fig
-
-def map_overview_by_station():
-    map_overview_fig = px.scatter_mapbox(df_air,
-             lat="Latitude",
-             lon="Longitude",
-             animation_frame="Year",
-             color="SO2",
-             size="PM10",
-              height=800,
-             color_continuous_scale=px.colors.sequential.Turbo, zoom=10)
-    #map_overview_fig.show()
-    return map_overview_fig
-
-def piechart_overview():
-    df = df_air.copy()
-    fig = px.pie(df, values='CO', names='Short_address', title='Contribution of the polluant by stations')
-
-    return fig 
-
-
+####Avoid negative values for NO2 Polluant
+df_air = prp.filter_negative_no2(df_air)
 
 
 ##############################################
-
-
-
 
 app = Dash(__name__)
 
 
 app.layout = html.Div([
     html.H1(children='Air pollution analysis in Seoul city', style={'text-align':'center'}),
-    
 
 
     html.Div([
         html.H2(children='Overview of polluants over the whole network', style={'text-align':'left'}),
         html.Br(),
         
-        dcc.Graph(id='polluant_overview_line_id', figure=polluant_overview_line())
+        dcc.Graph(id='polluant_overview_line_id', figure=glo.polluant_overview_line(data))
      ]),
     html.Br(),
 
@@ -220,7 +56,7 @@ app.layout = html.Div([
         html.H2(children='Overview of particulate matter over the whole network', style={'text-align':'left'}),
         html.Br(),
         
-        dcc.Graph(id='particulate_overview_line_id', figure=particulate_matter_overview_line())
+        dcc.Graph(id='particulate_overview_line_id', figure=glo.particulate_matter_overview_line(data))
      ]),
 
     html.Br(),
@@ -228,22 +64,20 @@ app.layout = html.Div([
     html.Div([
         html.H2(children='Map overview of polluants by stations', style={'text-align':'left'}),
         html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
+        html.H4(children='Select the animation time',style={'display':'inline-block','margin-right':400}),
         dcc.RadioItems(id="radio_polluant__for_map_id",
             options=[{"label":"SO2","value":"SO2"},
-           {"label":"NO2","value":"NO2"}, {"label":"O3","value":"O3"},
+           {"label":"NO2","value":"NO2"}, {"label":"CO","value":"CO"}, {"label":"O3","value":"O3"},
             {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
-            value='NO2'),
+            value='SO2',style={'margin-right':40}),
+        dcc.RadioItems(id="animation_type_id",
+            options=[{"label":"By Year","value":"Year"}, {"label":"By Month","value":"Month"}],
+            value='Year', style={'display':'inline-block','margin-right':40}),
         html.Br(),        
         dcc.Graph(id='map_polluant_overview', figure={})
 
      ]),
-
-    dcc.Tabs(id="tabs", value='tab-1', children=[
-        dcc.Tab(label='Concentration details by polluant', value='tab-1'),
-        dcc.Tab(label='Concentration details by station', value='tab-2'),
-        dcc.Tab(label='Concentration by threshold value', value='tab-3'),
-    ]),
-    html.Div(id='tabs-content'),
+    html.Br(), 
     
 
     html.Div([
@@ -252,7 +86,7 @@ app.layout = html.Div([
         html.Div([html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
         dcc.RadioItems(id="radio_polluant_id",
             options=[{"label":"SO2","value":"SO2"},
-           {"label":"NO2","value":"NO2"}, {"label":"O3","value":"O3"},
+           {"label":"NO2","value":"NO2"}, {"label":"CO","value":"CO"}, {"label":"O3","value":"O3"},
             {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
             value='NO2'),
         html.H4(children='Select year',style={'display':'inline-block','margin-right':160}),
@@ -276,10 +110,21 @@ app.layout = html.Div([
     
         dcc.Graph(id='barchart_by_time', figure={}),
         html.H2(children='PieChart analysis', style={'text-align':'left'}),
-        #dcc.Dropdown(id='dropdown_stations',options=Addresses, multi=False, value=Addresses[0]),
         html.Br(),
         dcc.Graph(id='PieChart_id', figure={})
      ],id="main_div"),
+
+        html.Div([
+        html.H2(children='Concentration overview by limit', style={'text-align':'left'}),   
+        html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
+        dcc.RadioItems(id="radio_polluant_tab3_id",
+            options=[{"label":"SO2","value":"SO2"},
+           {"label":"NO2","value":"NO2"}, {"label":"CO","value":"CO"}, {"label":"O3","value":"O3"},
+            {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
+            value='SO2'),    
+        html.Br(),
+        dcc.Graph(id='threshold_overview_line_id', figure={})
+        ]),
        
 ])
 
@@ -288,21 +133,39 @@ app.layout = html.Div([
 
 @app.callback(
     Output(component_id='map_polluant_overview', component_property='figure'),
-    Input(component_id='radio_polluant__for_map_id', component_property='value'),
+    [Input(component_id='radio_polluant__for_map_id', component_property='value'),
+    Input(component_id='animation_type_id', component_property='value'),]
 )
-def update_map_overview(gaz):
-    res = False
-    fig = px.scatter_mapbox(df_air,
-             lat="Latitude",
-             lon="Longitude",
-             animation_frame="Year",
-             color=gaz,
-             size="PM10",
-              height=800,
-             color_continuous_scale=px.colors.sequential.Turbo, zoom=10)
+def update_map_overview(gaz, animation):
+    fig = {}
+    if animation=="Year":
+        fig = px.scatter_mapbox(df_air,
+                 lat="Latitude",
+                 lon="Longitude",
+                 animation_frame="Year",
+                 color=gaz,
+                 size="PM10",
+                  height=800,
+                 color_continuous_scale=px.colors.sequential.Turbo, zoom=10)
+    else:
+        fig = px.scatter_mapbox(df_air,
+                 lat="Latitude",
+                 lon="Longitude",
+                 animation_frame="Year_month",
+                 color=gaz,
+                 size="PM10",
+                  height=800,
+                 color_continuous_scale=px.colors.sequential.Turbo, zoom=10)
     return fig
 
 
+"""
+ dcc.Tabs(id="tabs", value='tab-1', children=[
+                 dcc.Tab(label='Concentration details by polluant', value='tab-1'),
+                 dcc.Tab(label='Concentration details by station', value='tab-2'),
+             ]),
+             html.Div(id='tabs-content'),
+    
 @app.callback(Output('tabs-content', 'children'),
               Input('tabs', 'value'))
 def render_content(tab):
@@ -312,14 +175,9 @@ def render_content(tab):
         return  html.Div([
         html.H2(children='PieChart 2 analysis', style={'text-align':'left'}),
         html.Br(),
-        dcc.Graph(id='PieChart_id2', figure=piechart_overview())
+        dcc.Graph(id='PieChart_id2', figure=glo.piechart_overview(df_air))
      ]),
-    
-
-
-
-
-
+"""
 
 
 @app.callback(
@@ -337,33 +195,13 @@ def render_content(tab):
 )
 def update_graph(gaz, year, month, day):
     res = False
-    """ if gaz == "PM10":
-                 df = pm10_status.copy()
-                 color = "PM10"
-             elif gaz=="PM2.5":
-                 df = pm25_status.copy()
-                 color = "PM2.5_status"
-             elif gaz=="NO2":
-                 df = no2_status.copy()
-                 color = "NO2_status"
-             elif gaz=="SO2":
-                 df = so2_status.copy()
-                 color = "SO2_status"
-             elif gaz=="O3":
-                 df = o3_status.copy()
-                 color = "O3_status"
-             else :
-                 df = co_status.copy()
-                 color = "co_status"
-    """
 
     ##filter dataframe with year value selected by user
-    #print(str(year)+"-01")
     if year and month:
-        days = generate_days(year, month)
-        mth = str(year)+"-"+months_to_number[month]
+        days = prp.generate_days(year, month, data)
+        mth = str(year)+"-"+prp.months_to_number[month]
         df =df_air.copy()
-        df = df[(df["Year"]==str(year)) & (df["Month"]==months_to_number[month]) ]
+        df = df[(df["Year"]==str(year)) & (df["Month"]==prp.months_to_number[month]) ]
         ## prepare the figure according to the filtered data
         fig = px.bar(df, x='Short_address', y=gaz,
          title="Mean of pollutions grouped by address station and year", color=gaz,
@@ -386,7 +224,24 @@ def update_graph(gaz, year, month, day):
             res = fig, fig2, days, {}
     return res
 
+@app.callback(Output(component_id='threshold_overview_line_id', component_property='figure'),
+             Input(component_id='radio_polluant_tab3_id', component_property='value'),)
+def update_threshold_linechart(gaz):
+    threshold= prp.polluant_threshold[gaz]
+    df_sorted = data.copy().groupby(['Year_month','Year','Month'], as_index=False).agg({'SO2':'mean',
+         'NO2':'mean', 'O3':'mean', 'CO':'mean', 'PM10':'mean', 'PM2.5':'mean'}).sort_values(by="Year_month")
+    df_sorted['Threshold_polluant']=df_sorted[gaz].map(lambda x:threshold)
+    #print(df_sorted)
+    fig= go.Figure()
+    fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::], y=df_sorted[gaz].iloc[::],
+                            mode='lines+markers',
+                            name='Polluant '+ gaz)),
+    fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::], y=df_sorted['Threshold_polluant'].iloc[::],
+                            mode='lines',
+                            name='Threshold '+gaz))
+    return fig
+
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True,threaded=True)

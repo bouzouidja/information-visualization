@@ -46,6 +46,9 @@ def polluant_overview_line(data):
     fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['O3'].iloc[::2],
                     mode='lines+markers',
                     name='Polluant O3'))
+    fig.update_layout(
+    yaxis_title="Concentration %",
+    xaxis_title="Time",)
 
 
     return fig
@@ -62,7 +65,9 @@ def particulate_matter_overview_line(data):
                     mode='lines+markers',
                     name='Polluant PM2.5'))
 
-    
+    fig.update_layout(
+    yaxis_title="Concentration (mcg/m3)",
+    xaxis_title="Time",)    
 
     return fig
 """

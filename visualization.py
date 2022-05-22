@@ -11,6 +11,10 @@ from urllib.request import urlopen
 import json
 import preprocessing as prp
 import global_overview as glo
+import base64
+
+
+
 
 
 ###### set up Plotly express token #####
@@ -38,11 +42,21 @@ df_air = prp.filter_negative_no2(df_air)
 ##############################################
 
 app = Dash(__name__)
+#encoded_image = base64.b64encode(open('data/src/static/seoul_metropolitan_logo.png', 'rb').read())
+image_filename = 'data/src/static/seoul_metropolitan_logo.png' # replace with your own image
+encoded_image = base64.b64encode(open(image_filename, 'rb').read())
+#  html.Img(id="VUB", src='data/src/ulb_logo.png;base64,{}'.format(encoded_image)),
+#html.Img(id="Seoul", src='data/src/seoul_metropolitan_logo.png;base64,{}'.format(encoded_image)),
 
 
 app.layout = html.Div([
-    html.H1(children='Air pollution analysis in Seoul city', style={'text-align':'center'}),
-
+    html.Div([
+        html.Div(
+        html.Img(title="VUB",src=app.get_asset_url('data/src/static/vub_logo.png'), style={'height':'10%', 'width':'10%'})),
+        html.H1(children='Air pollution analysis in Seoul city', style={'text-align':'center'}),
+        html.Img(title="LOGO",src='data/src/static/seoul_metropolitan_logo.png;base64,{}'.format(encoded_image))
+        ]),
+    html.Br(),
 
     html.Div([
         html.H2(children='Overview of polluants over the whole network', style={'text-align':'left'}),
@@ -63,13 +77,16 @@ app.layout = html.Div([
 
     html.Div([
         html.H2(children='Map overview of polluants by stations', style={'text-align':'left'}),
-        html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
-        html.H4(children='Select the animation time',style={'display':'inline-block','margin-right':400}),
-        dcc.RadioItems(id="radio_polluant__for_map_id",
+        html.Div([
+            html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
+        html.H4(children='Select the animation time',style={'display':'inline-block','margin-right':160}),
+
+            ]),
+            dcc.RadioItems(id="radio_polluant__for_map_id",
             options=[{"label":"SO2","value":"SO2"},
            {"label":"NO2","value":"NO2"}, {"label":"CO","value":"CO"}, {"label":"O3","value":"O3"},
             {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
-            value='SO2',style={'margin-right':40}),
+            value='SO2',style={'width':'200px','display':'inline-block','margin-right':40}),
         dcc.RadioItems(id="animation_type_id",
             options=[{"label":"By Year","value":"Year"}, {"label":"By Month","value":"Month"}],
             value='Year', style={'display':'inline-block','margin-right':40}),
@@ -83,13 +100,14 @@ app.layout = html.Div([
     html.Div([
         html.H2(children='Average of concentration by station addresses', style={'text-align':'left'}),
         
-        html.Div([html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
+        html.Div([
+        html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
         dcc.RadioItems(id="radio_polluant_id",
             options=[{"label":"SO2","value":"SO2"},
            {"label":"NO2","value":"NO2"}, {"label":"CO","value":"CO"}, {"label":"O3","value":"O3"},
             {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
             value='NO2'),
-        html.H4(children='Select year',style={'display':'inline-block','margin-right':160}),
+        html.H4(children='Select the year',style={'display':'inline-block','margin-right':160}),
         html.H4(children='Select the month',style={'display':'inline-block','margin-right':160}),]),
         
         dcc.Dropdown(id='dropdown_years',options=['2017','2018','2019'], multi=False,
@@ -235,7 +253,7 @@ def update_threshold_linechart(gaz):
     fig= go.Figure()
     fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::], y=df_sorted[gaz].iloc[::],
                             mode='lines+markers',
-                            name='Polluant '+ gaz)),
+                            name='Polluant '+ gaz),),
     fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::], y=df_sorted['Threshold_polluant'].iloc[::],
                             mode='lines',
                             name='Threshold '+gaz))

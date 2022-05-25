@@ -39,28 +39,26 @@ df_air = prp.aggregation(data)
 df_air = prp.filter_negative_no2(df_air)
 
 
+
+
 ##############################################
 
 app = Dash(__name__)
-#encoded_image = base64.b64encode(open('data/src/static/seoul_metropolitan_logo.png', 'rb').read())
-image_filename = 'data/src/static/seoul_metropolitan_logo.png' # replace with your own image
-encoded_image = base64.b64encode(open(image_filename, 'rb').read())
-#  html.Img(id="VUB", src='data/src/ulb_logo.png;base64,{}'.format(encoded_image)),
-#html.Img(id="Seoul", src='data/src/seoul_metropolitan_logo.png;base64,{}'.format(encoded_image)),
 
 
 app.layout = html.Div([
-    html.Div([
-        html.Div(
-        html.Img(title="VUB",src=app.get_asset_url('data/src/static/vub_logo.png'), style={'height':'10%', 'width':'10%'})),
-        html.H1(children='Air pollution analysis in Seoul city', style={'text-align':'center'}),
-        html.Img(title="LOGO",src='data/src/static/seoul_metropolitan_logo.png;base64,{}'.format(encoded_image))
+ 
+        html.Div([
+            html.H1(children='Air pollution analysis in Seoul city', style={'text-align':'center'}),
+            html.Br(),
+            html.Img(src=app.get_asset_url('vub_logo.png'), style={'display':'inline-block','height':'10%', 'width':'10%'}),
+            html.Img(src=app.get_asset_url('seoul_metropolitan_logo.png'), style={'float':'right','display':'inline-block','height':'20%', 'width':'20%'}),
+            html.Br(),
         ]),
     html.Br(),
 
     html.Div([
-        html.H2(children='Overview of polluants over the whole network', style={'text-align':'left'}),
-        html.Br(),
+        html.H2(children='Overview of pollutants over the whole network', style={'text-align':'left',"text-decoration": "underline"}),
         
         dcc.Graph(id='polluant_overview_line_id', figure=glo.polluant_overview_line(data))
      ]),
@@ -76,9 +74,9 @@ app.layout = html.Div([
     html.Br(),
 
     html.Div([
-        html.H2(children='Map overview of polluants by stations', style={'text-align':'left'}),
+        html.H2(children='Map overview of pollutants by locations', style={'text-align':'left'}),
         html.Div([
-            html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
+            html.H4(children='Select the pollutant',style={'display':'inline-block','margin-right':160}),
         html.H4(children='Select the animation time',style={'display':'inline-block','margin-right':160}),
 
             ]),
@@ -98,10 +96,10 @@ app.layout = html.Div([
     
 
     html.Div([
-        html.H2(children='Average of concentration by station addresses', style={'text-align':'left'}),
+        html.H2(children='Average of concentration by station', style={'text-align':'left'}),
         
         html.Div([
-        html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
+        html.H4(children='Select the pollutant',style={'display':'inline-block','margin-right':160}),
         dcc.RadioItems(id="radio_polluant_id",
             options=[{"label":"SO2","value":"SO2"},
            {"label":"NO2","value":"NO2"}, {"label":"CO","value":"CO"}, {"label":"O3","value":"O3"},
@@ -119,17 +117,19 @@ app.layout = html.Div([
           multi=False, value='January', style={'width':'200px','display':'inline-block','margin-right':40},
           placeholder="Select the month"),
         
-                
+        html.H2(children='PieChart analysis', style={'text-align':'left'}),
+        html.Br(),
+        dcc.Graph(id='PieChart_id', figure={}),
+
+        html.Br() , 
         dcc.Graph(id='barchart1', figure={}),
-        html.H2(children='concentration by hours of date', style={'text-align':'left'}),
+        html.H2(children='Concentration by hours', style={'text-align':'left'}),
         html.H4(children='Select your day',style={'text-align':'left'}),
         dcc.Dropdown(id='dropdown_day',
           style={'width':'200px','display':'inline-block','margin-right':40}, placeholder="Select the day"),
     
         dcc.Graph(id='barchart_by_time', figure={}),
-        html.H2(children='PieChart analysis', style={'text-align':'left'}),
-        html.Br(),
-        dcc.Graph(id='PieChart_id', figure={})
+        
      ],id="main_div"),
 
         html.Div([
@@ -141,13 +141,24 @@ app.layout = html.Div([
             {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
             value='SO2'),    
         html.Br(),
-        dcc.Graph(id='threshold_overview_line_id', figure={})
-        ]),
+        dcc.Graph(id='threshold_overview_line_id', figure={}),
+        html.Br(),
+        html.H3(children='Edit your limitation', style={'text-align':'left'}),   
+
+        dcc.Input(
+            id="input_threshold",
+            type="range",
+            value=0.0,
+            placeholder="input type",),
+
+        html.Div(id="out-all-types"),
+        ] ),
        
 ])
 
 
-####Callback for connecting components
+####Callback for connecting components###############################
+###################################################################
 
 @app.callback(
     Output(component_id='map_polluant_overview', component_property='figure'),
@@ -157,62 +168,44 @@ app.layout = html.Div([
 def update_map_overview(gaz, animation):
     fig = {}
     if animation=="Year":
-        fig = px.scatter_mapbox(df_air,
+        fig = px.scatter_mapbox(df_air[df_air['SO2']>=0],
                  lat="Latitude",
                  lon="Longitude",
                  animation_frame="Year",
                  color=gaz,
-                 size="PM10",
+                 size="SO2",
                   height=800,
                  color_continuous_scale=px.colors.sequential.Turbo, zoom=10)
     else:
-        fig = px.scatter_mapbox(df_air,
+        fig = px.scatter_mapbox(df_air[df_air['SO2']>=0],
                  lat="Latitude",
                  lon="Longitude",
                  animation_frame="Year_month",
                  color=gaz,
-                 size="PM10",
+                 size="SO2",
                   height=800,
+                  mapbox_style="carto-positron",
                  color_continuous_scale=px.colors.sequential.Turbo, zoom=10)
     return fig
 
 
-"""
- dcc.Tabs(id="tabs", value='tab-1', children=[
-                 dcc.Tab(label='Concentration details by polluant', value='tab-1'),
-                 dcc.Tab(label='Concentration details by station', value='tab-2'),
-             ]),
-             html.Div(id='tabs-content'),
-    
-@app.callback(Output('tabs-content', 'children'),
-              Input('tabs', 'value'))
-def render_content(tab):
-    if tab == 'tab-1':
-        return html.Div(id="main_div")
-    elif tab == 'tab-2':
-        return  html.Div([
-        html.H2(children='PieChart 2 analysis', style={'text-align':'left'}),
-        html.Br(),
-        dcc.Graph(id='PieChart_id2', figure=glo.piechart_overview(df_air))
-     ]),
-"""
 
 
 @app.callback(
     [Output(component_id='barchart1', component_property='figure'),
     Output(component_id='PieChart_id', component_property='figure'),
      Output(component_id='dropdown_day', component_property='options'),
-     #Output(component_id='dropdown_day', component_property='value'),
-     Output(component_id='barchart_by_time', component_property='figure'), ],
+     Output(component_id='dropdown_day', component_property='value'),
+      ],
     [
      Input(component_id='radio_polluant_id', component_property='value'),
      Input(component_id='dropdown_years', component_property='value'),
      Input(component_id='dropdown_months', component_property='value'),
-     Input(component_id='dropdown_day', component_property='value'),
+     
       ]
 )
-def update_graph(gaz, year, month, day):
-    res = False
+def update_graph(gaz, year, month):
+    res = ()
 
     ##filter dataframe with year value selected by user
     if year and month:
@@ -222,29 +215,42 @@ def update_graph(gaz, year, month, day):
         df = df[(df["Year"]==str(year)) & (df["Month"]==prp.months_to_number[month]) ]
         ## prepare the figure according to the filtered data
         fig = px.bar(df, x='Short_address', y=gaz,
-         title="Mean of pollutions grouped by address station and year", color=gaz,
+         title="Mean of pollutions grouped by station and year", color="SO2",
          color_continuous_scale=px.colors.sequential.Turbo,
           labels={"Short_address":"Station name"})
-        
-
         # Plotly Express
-        fig2 = px.pie(df, values=gaz, names='Short_address', title='Contribution of the polluant by stations')
-        if day:
-            data_by_hour = data[(data['Measurement date'].str.split(' ').map(lambda  x:x[0])==day)].copy()
-            data_by_hour['Day_time']=data_by_hour['Measurement date'].str.split(' ').map(lambda x:x[1])
-            fig4 = px.bar(data_by_hour, x='Short_address', y='NO2',
-             title="Mean of pollutions by day", color='NO2',
+        fig2 = px.pie(df, values=gaz, names='Short_address', title='Contribution of the pollutants by stations')
+        
+        res = fig, fig2, days,days[0]
+
+    return res
+
+@app.callback(Output(component_id='barchart_by_time', component_property='figure'),
+            [Input(component_id='dropdown_day', component_property='value'),
+            Input(component_id='radio_polluant_id', component_property='value'),],)
+def update_barchart_day(day,gaz):
+    res = {}
+    if day:
+        data_by_hour = data[(data['Measurement date'].str.split(' ').map(lambda  x:x[0])==day)].copy()
+        data_by_hour['Day_time']=data_by_hour['Measurement date'].str.split(' ').map(lambda x:x[1])
+
+        fig = px.bar(data_by_hour, x='Short_address', y=gaz,
+             title="Mean of pollutions by day", color='SO2',
               animation_frame="Day_time",
               color_continuous_scale=px.colors.sequential.Turbo,
                labels={"Short_address":"Station name"})
-            res = fig, fig2, days, fig4
-        else: 
-            res = fig, fig2, days, {}
+        res = fig
     return res
 
-@app.callback(Output(component_id='threshold_overview_line_id', component_property='figure'),
-             Input(component_id='radio_polluant_tab3_id', component_property='value'),)
-def update_threshold_linechart(gaz):
+
+
+@app.callback([Output(component_id='threshold_overview_line_id', component_property='figure'),
+                Output(component_id="input_threshold",component_property='min'),
+                Output(component_id="input_threshold",component_property='max'),
+                ],
+             [Input(component_id='radio_polluant_tab3_id', component_property='value'),
+             Input(component_id='input_threshold', component_property='value')],)
+def update_threshold_linechart(gaz, threshold):
     threshold= prp.polluant_threshold[gaz]
     df_sorted = data.copy().groupby(['Year_month','Year','Month'], as_index=False).agg({'SO2':'mean',
          'NO2':'mean', 'O3':'mean', 'CO':'mean', 'PM10':'mean', 'PM2.5':'mean'}).sort_values(by="Year_month")
@@ -257,8 +263,48 @@ def update_threshold_linechart(gaz):
     fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::], y=df_sorted['Threshold_polluant'].iloc[::],
                             mode='lines',
                             name='Threshold '+gaz))
-    return fig
+    min =0
+    max =0
+    if gaz=="PM2.5":
+        min= 30.0
+        max=150.0
+    elif gaz=="PM10":
+        min= 15.0
+        max=75.0
+    elif gaz=="SO2":
+        min= .02
+        max= .15
+    elif gaz=="NO2":
+        min= .03
+        max= .2
+    elif gaz=="CO":
+        min= 2.0
+        max= 15.0
+    elif gaz=="O3":
+        min= .03
+        max= .15
+    return fig, min, max
 
+@app.callback(
+    Output("out-all-types", "children"),
+    [Input("input_threshold", "value"),
+    Input("radio_polluant_tab3_id", "value"), ],
+)
+def cb_render(rangeval, gaz):
+        
+        prp.polluant_threshold[gaz]=rangeval
+        return "range: {}".format(rangeval)
+
+"""
+@app.callback(
+    Output("number-out", "children"),
+    Input("dfalse", "value"),
+    Input("dtrue", "value"),
+    Input("input_range_2", "value"),
+)
+def number_render(fval, tval, rangeval):
+    return "dfalse: {}, dtrue: {}, range: {}".format(fval, tval, rangeval)
+"""
 
 
 if __name__ == '__main__':

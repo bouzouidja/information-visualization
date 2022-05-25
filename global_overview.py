@@ -36,16 +36,16 @@ def polluant_overview_line(data):
     fig= go.Figure()
     fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['NO2'].iloc[::2],
                     mode='lines+markers',
-                    name='Polluant NO2')),
+                    name='Pollutant NO2')),
     fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['SO2'].iloc[::2],
                     mode='lines+markers',
-                    name='Polluant SO2'))
+                    name='Pollutant SO2'))
     fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['CO'].iloc[::2],
                     mode='lines+markers',
-                    name='Polluant CO'))
+                    name='Pollutant CO'))
     fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['O3'].iloc[::2],
                     mode='lines+markers',
-                    name='Polluant O3'))
+                    name='Pollutant O3'))
     fig.update_layout(
     yaxis_title="Concentration %",
     xaxis_title="Time",)
@@ -60,33 +60,21 @@ def particulate_matter_overview_line(data):
     fig= go.Figure()
     fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['PM10'].iloc[::2],
                     mode='lines+markers',
-                    name='Polluant PM10'))
+                    name='Pollutant PM10'))
     fig.add_trace(go.Scatter(x=df_sorted['Year_month'].iloc[::2], y=df_sorted['PM2.5'].iloc[::2],
                     mode='lines+markers',
-                    name='Polluant PM2.5'))
+                    name='Pollutant PM2.5'))
 
     fig.update_layout(
     yaxis_title="Concentration (mcg/m3)",
     xaxis_title="Time",)    
 
     return fig
-"""
-def map_overview_by_station(df_air):
-    map_overview_fig = px.scatter_mapbox(df_air,
-             lat="Latitude",
-             lon="Longitude",
-             animation_frame="Year",
-             color="SO2",
-             size="PM10",
-              height=800,
-             color_continuous_scale=px.colors.sequential.Turbo, zoom=10)
-    #map_overview_fig.show()
-    return map_overview_fig
-"""
+
 
 def piechart_overview(df_air):
     df = df_air.copy()
-    fig = px.pie(df, values='CO', names='Short_address', title='Contribution of the polluant by stations')
+    fig = px.pie(df, values='CO', names='Short_address', title='Contribution of the pollutants by stations')
 
     return fig 
 

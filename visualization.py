@@ -40,7 +40,6 @@ df_air = prp.filter_negative_no2(df_air)
 
 
 
-
 ##############################################
 
 app = Dash(__name__)
@@ -84,7 +83,7 @@ app.layout = html.Div([
             options=[{"label":"SO2","value":"SO2"},
            {"label":"NO2","value":"NO2"}, {"label":"CO","value":"CO"}, {"label":"O3","value":"O3"},
             {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
-            value='SO2',style={'width':'200px','display':'inline-block','margin-right':40}),
+            value='NO2',style={'width':'200px','display':'inline-block','margin-right':40}),
         dcc.RadioItems(id="animation_type_id",
             options=[{"label":"By Year","value":"Year"}, {"label":"By Month","value":"Month"}],
             value='Year', style={'display':'inline-block','margin-right':40}),
@@ -183,7 +182,7 @@ def update_map_overview(gaz, animation):
                  animation_frame="Year_month",
                  color=gaz,
                  size="SO2",
-                  height=800,
+                  height=550,
                   mapbox_style="carto-positron",
                  color_continuous_scale=px.colors.sequential.Turbo, zoom=10)
     return fig

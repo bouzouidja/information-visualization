@@ -1,6 +1,12 @@
-# information-visualization
+# information-visualization 
 This repo is dedicated to our information visualization project that concern Air pollution in Seoul city.
 
+
+# Project summary
+Prepare and then present dataset of 3 years of pollutants collected from 25 factories in Seoul city.
+The outcome (graphs, charts) need to be provided to Seoul governement in order to acheive their goals.
+# Dataset
+The dataset is provided from Kaggle, air pollution in Seoul city (source from Seoul gov official web site)
 # Targer users
 Seoul governement staffs
 # Target tasks
@@ -10,6 +16,17 @@ Seoul governement staffs
 - Neutralization carbon
 
 
+# Tools and packages needed
+- Dash Plotly lib
+- Mapbox lib
+- Pandas
+
+
+# Visualization charts used
+- Scatter Mapbox
+- Line chart
+- PieChart
+- BarChart
 
 # Interaction
 Show an overview of the whole data set and then show a subset of it, use multiform, facet, 

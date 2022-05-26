@@ -48,7 +48,7 @@ app = Dash(__name__)
 app.layout = html.Div([
  
         html.Div([
-            html.H1(children='Air pollution analysis in Seoul city', style={'text-align':'center'}),
+            html.H1(children='Air pollution analysis in Seoul city', style={'text-align':'center',"text-decoration": "underline"}),
             html.Br(),
             html.Img(src=app.get_asset_url('vub_logo.png'), style={'display':'inline-block','height':'10%', 'width':'10%'}),
             html.Img(src=app.get_asset_url('seoul_metropolitan_logo.png'), style={'float':'right','display':'inline-block','height':'20%', 'width':'20%'}),
@@ -57,7 +57,7 @@ app.layout = html.Div([
     html.Br(),
 
     html.Div([
-        html.H2(children='Overview of pollutants over the whole network', style={'text-align':'left',"text-decoration": "underline"}),
+        html.H2(children='Overview of pollutants over the whole network', style={'text-align':'left'}),
         
         dcc.Graph(id='polluant_overview_line_id', figure=glo.polluant_overview_line(data))
      ]),

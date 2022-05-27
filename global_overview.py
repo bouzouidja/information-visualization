@@ -48,7 +48,8 @@ def polluant_overview_line(data):
                     name='Pollutant O3'))
     fig.update_layout(
     yaxis_title="Concentration %",
-    xaxis_title="Time",)
+    xaxis_title="Time",
+    title='Concentration insight by polluant')
 
 
     return fig
@@ -67,7 +68,8 @@ def particulate_matter_overview_line(data):
 
     fig.update_layout(
     yaxis_title="Concentration (mcg/m3)",
-    xaxis_title="Time",)    
+    xaxis_title="Time",
+    title='Concentration insight by particulate matter')    
 
     return fig
 

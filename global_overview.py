@@ -72,11 +72,3 @@ def particulate_matter_overview_line(data):
     title='Concentration insight by particulate matter')    
 
     return fig
-
-
-def piechart_overview(df_air):
-    df = df_air.copy()
-    fig = px.pie(df, values='CO', names='Short_address', title='Contribution of the pollutants by stations')
-
-    return fig 
-

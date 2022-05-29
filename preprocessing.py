@@ -64,7 +64,7 @@ def aggregation(data):
 
 ###avoid negative value
 def filter_negative_no2(data):
-    return data[(data["NO2"]>=0)]
+    return data[(data["NO2"]>=0) & data["SO2"]>=0]
 
 
 

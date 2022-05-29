@@ -40,6 +40,7 @@ df_air = prp.filter_negative_no2(df_air)
 
 
 
+
 ##############################################
 
 app = Dash(__name__)
@@ -98,7 +99,8 @@ app.layout = html.Div([
         html.H2(children='Map overview of pollutants by locations', style={'text-align':'left'}),
         html.Div([
             html.H4(children='Select the pollutant',style={'display':'inline-block','margin-right':160}),
-        html.H4(children='Select the animation time',style={'display':'inline-block','margin-right':160}),
+            html.H4(children='Select the animation time',style={'display':'inline-block','margin-right':160}),
+            html.H4(children='Select the harmful gas as size of data point',style={'display':'inline-block','margin-right':160}),
 
             ]),
             dcc.RadioItems(id="radio_polluant__for_map_id",
@@ -109,6 +111,9 @@ app.layout = html.Div([
         dcc.RadioItems(id="animation_type_id",
             options=[{"label":"By Year","value":"Year"}, {"label":"By Month","value":"Month"}],
             value='Year', style={'display':'inline-block','margin-right':40}),
+        dcc.Dropdown(id='dropdown_harmful_gases',options=['SO2','NO2','CO','O3','PM2.5','PM10'], multi=False,
+         value="PM10", style={'width':'200px','display':'inline-block','margin-right':40}, placeholder="Select your harmful gas"),
+    
         html.Br(),        
         dcc.Graph(id='map_polluant_overview', figure={})
 
@@ -127,7 +132,8 @@ app.layout = html.Div([
             {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
             value='NO2'),
         html.H4(children='Select the year',style={'display':'inline-block','margin-right':160}),
-        html.H4(children='Select the month',style={'display':'inline-block','margin-right':160}),]),
+        html.H4(children='Select the month',style={'display':'inline-block','margin-right':160}),
+]),
         
         dcc.Dropdown(id='dropdown_years',options=['2017','2018','2019'], multi=False,
          value="2017", style={'width':'200px','display':'inline-block','margin-right':40}, placeholder="Select the year"),
@@ -181,27 +187,28 @@ app.layout = html.Div([
 @app.callback(
     Output(component_id='map_polluant_overview', component_property='figure'),
     [Input(component_id='radio_polluant__for_map_id', component_property='value'),
-    Input(component_id='animation_type_id', component_property='value'),]
+    Input(component_id='animation_type_id', component_property='value'),
+    Input(component_id='dropdown_harmful_gases', component_property='value')]
 )
-def update_map_overview(gaz, animation):
+def update_map_overview(gaz, animation, harmful_gas):
     fig = {}
     if animation=="Year":
-        fig = px.scatter_mapbox(df_air[df_air['SO2']>=0],
+        fig = px.scatter_mapbox(df_air[df_air[harmful_gas]>=0],
                  lat="Latitude",
                  lon="Longitude",
                  animation_frame="Year",
                  color=gaz,
-                 size="SO2",
+                 size=harmful_gas,
                   height=800,
                  color_continuous_scale=px.colors.sequential.Turbo,
                   title='Concentration insight by stations on Seoul map', zoom=10)
     else:
-        fig = px.scatter_mapbox(df_air[df_air['SO2']>=0],
+        fig = px.scatter_mapbox(df_air[df_air[harmful_gas]>=0],
                  lat="Latitude",
                  lon="Longitude",
                  animation_frame="Year_month",
                  color=gaz,
-                 size="SO2",
+                 size=harmful_gas,
                   height=550,
                   mapbox_style="carto-positron",
                  color_continuous_scale=px.colors.sequential.Turbo,
@@ -214,16 +221,14 @@ def update_map_overview(gaz, animation):
 @app.callback(
     [Output(component_id='barchart1', component_property='figure'),
      Output(component_id='dropdown_day', component_property='options'),
-     Output(component_id='dropdown_day', component_property='value'),
-      ],
+     Output(component_id='dropdown_day', component_property='value'),],
     [
      Input(component_id='radio_polluant_id', component_property='value'),
      Input(component_id='dropdown_years', component_property='value'),
-     Input(component_id='dropdown_months', component_property='value'),
-     
-      ]
+     Input(component_id='dropdown_harmful_gases', component_property='value'),
+     Input(component_id='dropdown_months', component_property='value'),]
 )
-def update_graph(gaz, year, month):
+def update_graph(gaz, year,harmful_gas, month):
     res = ()
 
     ##filter dataframe with year value selected by user
@@ -234,26 +239,26 @@ def update_graph(gaz, year, month):
         df = df[(df["Year"]==str(year)) & (df["Month"]==prp.months_to_number[month]) ]
         ## prepare the figure according to the filtered data
         fig = px.bar(df, x='Short_address', y=gaz,
-         title="Contribution of pollutant by station", color="SO2",
+         title="Contribution of pollutant by station", color=harmful_gas,
          color_continuous_scale=px.colors.sequential.Turbo,
           labels={"Short_address":"Station name"})
-        # Plotly Express
-        
         res = fig, days,days[0]
+        # Plotly Express
 
     return res
 
 @app.callback(Output(component_id='barchart_by_time', component_property='figure'),
             [Input(component_id='dropdown_day', component_property='value'),
-            Input(component_id='radio_polluant_id', component_property='value'),],)
-def update_barchart_day(day,gaz):
+            Input(component_id='radio_polluant_id', component_property='value'),
+            Input(component_id='dropdown_harmful_gases', component_property='value'),],)
+def update_barchart_day(day,gaz, harmful_gas):
     res = {}
     if day:
         data_by_hour = data[(data['Measurement date'].str.split(' ').map(lambda  x:x[0])==day)].copy()
         data_by_hour['Day_time']=data_by_hour['Measurement date'].str.split(' ').map(lambda x:x[1])
 
         fig = px.bar(data_by_hour, x='Short_address', y=gaz,
-             title="Contribution of pollutant by hour", color='SO2',
+             title="Contribution of pollutant by hour", color=harmful_gas,
               animation_frame="Day_time",
               color_continuous_scale=px.colors.sequential.Turbo,
                labels={"Short_address":"Station name"})

@@ -69,9 +69,31 @@ app.layout = html.Div([
         
         dcc.Graph(id='particulate_overview_line_id', figure=glo.particulate_matter_overview_line(data))
      ]),
-
     html.Br(),
 
+    html.Div([
+        html.H2(children='Concentration overview by limit', style={'text-align':'left'}),   
+        html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
+        dcc.RadioItems(id="radio_polluant_tab3_id",
+            options=[{"label":"SO2","value":"SO2"},
+           {"label":"NO2","value":"NO2"}, {"label":"CO","value":"CO"}, {"label":"O3","value":"O3"},
+            {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
+            value='SO2'),    
+        html.Br(),
+        dcc.Graph(id='threshold_overview_line_id', figure={}),
+        html.Br(),
+        html.H3(children='Edit your limitation', style={'text-align':'left'}),   
+
+        dcc.Input(
+            id="input_threshold",
+            type="range",
+            value=0.0,
+            placeholder="input type",),
+
+        html.Div(id="out-all-types"),
+        ] ),
+
+    html.Br(),
     html.Div([
         html.H2(children='Map overview of pollutants by locations', style={'text-align':'left'}),
         html.Div([
@@ -148,27 +170,7 @@ app.layout = html.Div([
      ],id="main_div"),
 
 
-        html.Div([
-        html.H2(children='Concentration overview by limit', style={'text-align':'left'}),   
-        html.H4(children='Select the polluant',style={'display':'inline-block','margin-right':160}),
-        dcc.RadioItems(id="radio_polluant_tab3_id",
-            options=[{"label":"SO2","value":"SO2"},
-           {"label":"NO2","value":"NO2"}, {"label":"CO","value":"CO"}, {"label":"O3","value":"O3"},
-            {"label":"PM10","value":"PM10"}, {"label":"PM2.5","value":"PM2.5"}],
-            value='SO2'),    
-        html.Br(),
-        dcc.Graph(id='threshold_overview_line_id', figure={}),
-        html.Br(),
-        html.H3(children='Edit your limitation', style={'text-align':'left'}),   
-
-        dcc.Input(
-            id="input_threshold",
-            type="range",
-            value=0.0,
-            placeholder="input type",),
-
-        html.Div(id="out-all-types"),
-        ] ),
+        
        
 ])
 
@@ -232,7 +234,7 @@ def update_graph(gaz, year, month):
         df = df[(df["Year"]==str(year)) & (df["Month"]==prp.months_to_number[month]) ]
         ## prepare the figure according to the filtered data
         fig = px.bar(df, x='Short_address', y=gaz,
-         title="Mean of pollutions grouped by station and year", color="SO2",
+         title="Contribution of pollutant by station", color="SO2",
          color_continuous_scale=px.colors.sequential.Turbo,
           labels={"Short_address":"Station name"})
         # Plotly Express
@@ -251,7 +253,7 @@ def update_barchart_day(day,gaz):
         data_by_hour['Day_time']=data_by_hour['Measurement date'].str.split(' ').map(lambda x:x[1])
 
         fig = px.bar(data_by_hour, x='Short_address', y=gaz,
-             title="Mean of pollutions by day", color='SO2',
+             title="Contribution of pollutant by hour", color='SO2',
               animation_frame="Day_time",
               color_continuous_scale=px.colors.sequential.Turbo,
                labels={"Short_address":"Station name"})
@@ -287,7 +289,7 @@ def update_piechart(gaz, option, year):
     elif option=="by_month" and year :
         df = df[(df["Year"]==str(year))]
         res = px.pie(df, values=gaz, names='Year_month',color_discrete_sequence=px.colors.sequential.RdBu,
-         title='Contribution of the pollutants by years, months')
+         title='Contribution of the pollutants over all stations')
 
     return res
 
@@ -314,7 +316,7 @@ def update_threshold_linechart(gaz, threshold):
     fig.update_layout(
     yaxis_title="Concentration %",
     xaxis_title="Time",
-    title='Pollutants contributions by threshold ')
+    title='Pollutants contributions by threshold over all stations')
     min =0
     max =0
     if gaz=="PM2.5":

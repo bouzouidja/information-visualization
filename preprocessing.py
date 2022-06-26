@@ -16,10 +16,6 @@ months_to_number = {'January':'01', 'February':'02','Mars':'03','April':'04','Ma
 polluant_threshold={'SO2':.05,'NO2':.06,'CO':9.0,'O3':.09,'PM10':80.0,'PM2.5':35.0}
 
 
-ALLOWED_TYPES = (
-    "text", "number", "password", "email", "search",
-    "tel", "url", "range", "hidden",
-)
 
 
 
